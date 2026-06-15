@@ -1,11 +1,12 @@
-[package]
-name = "langust"
-version = "0.1.0"
-edition = "2024"
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused_imports = "warn"
 
-[target]
-default-features = false
-nightly = true
+[workspace.lints.clippy]
+all = "warn"
 
-[dependencies]
-num-traits = "0.2.19" // not used for now
+[workspace]
+resolver = "2"
+members = [
+    "linal",
+]
