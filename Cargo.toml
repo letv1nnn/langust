@@ -8,5 +8,5 @@ all = "warn"
 [workspace]
 resolver = "2"
 members = [
-    "linal",
+    "linal", "monumel",
 ]
