@@ -1,6 +1,6 @@
-use std::ops::{Add, Index, IndexMut};
+use std::ops::{Add, Index, IndexMut, Sub};
 
-use crate::matrix::simd::add_kernel;
+use crate::matrix::simd::{ArithmeticOperation, kernel_arithmetics};
 
 #[repr(C)]
 #[derive(Debug, PartialEq, PartialOrd)]
@@ -55,7 +55,33 @@ impl Add for Matrix {
         let len = self.rows * self.cols;
         let mut out = vec![0.0f64; len];
 
-        add_kernel(&self.data, &rhs.data, &mut out);
+        kernel_arithmetics(
+            &self.data,
+            &rhs.data,
+            &mut out,
+            ArithmeticOperation::Addition,
+        );
+
+        Matrix {
+            data: out,
+            rows: self.rows,
+            cols: self.cols,
+        }
+    }
+}
+
+impl Sub for Matrix {
+    type Output = Matrix;
+    fn sub(self, rhs: Self) -> Self::Output {
+        let len = self.rows * self.cols;
+        let mut out = vec![0.0f64; len];
+
+        kernel_arithmetics(
+            &self.data,
+            &rhs.data,
+            &mut out,
+            ArithmeticOperation::Subtraction,
+        );
 
         Matrix {
             data: out,
@@ -73,8 +99,17 @@ mod matrix_tests {
     fn addition() {
         let m1 = Matrix::from(vec![1.0, 2.0, 3.0, 4.0]);
         let m2 = Matrix::from(vec![4.0, 3.0, 2.0, 1.0]);
-        
+
         let expected = Matrix::from(vec![5.0; 4usize]);
         assert_eq!(m1 + m2, expected);
+    }
+
+    #[test]
+    fn subtraction() {
+        let m1 = Matrix::from(vec![1.0, 2.0, 3.0, 4.0]);
+        let m2 = Matrix::from(vec![4.0, 3.0, 2.0, 1.0]);
+
+        let expected = Matrix::from(vec![-3.0, -1.0, 1.0, 3.0]);
+        assert_eq!(m1 - m2, expected);
     }
 }
