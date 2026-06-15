@@ -1,0 +1,11 @@
+[package]
+name = "langust"
+version = "0.1.0"
+edition = "2024"
+
+[target]
+default-features = false
+nightly = true
+
+[dependencies]
+num-traits = "0.2.19" // not used for now
