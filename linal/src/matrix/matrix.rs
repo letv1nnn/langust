@@ -1,12 +1,15 @@
 use std::ops::{Add, Index, IndexMut, Sub};
 
-use crate::matrix::errors::MatrixError;
+use crate::matrix::{
+    errors::MatrixError,
+    simd::{ArithmeticOperation, Simd},
+};
 
 // TODO: Change to f32, so SIMD would calculate twice as faster.
 #[repr(C)]
 #[derive(Debug, PartialEq, PartialOrd)]
 pub struct Matrix {
-    data: Vec<f64>,
+    data: Vec<f32>,
     rows: usize,
     cols: usize,
 }
@@ -14,7 +17,7 @@ pub struct Matrix {
 impl Matrix {
     pub fn new(rows: usize, cols: usize) -> Self {
         Self {
-            data: vec![0.0f64; rows * cols],
+            data: vec![0.0f32; rows * cols],
             rows,
             cols,
         }
@@ -29,18 +32,36 @@ impl Matrix {
         if self.rows != rhs.rows || self.cols != rhs.cols {
             return Err(MatrixError::ShapeMismatch);
         }
-        Ok(self + rhs)
+        let mut out = Matrix::new(self.rows, self.cols);
+
+        Simd::arithmetics_f32(
+            &self.data,
+            &rhs.data,
+            &mut out.data,
+            ArithmeticOperation::Addition,
+        );
+
+        Ok(out)
     }
     pub fn try_sub(&self, rhs: &Self) -> Result<Self, MatrixError> {
         if self.rows != rhs.rows || self.cols != rhs.cols {
             return Err(MatrixError::ShapeMismatch);
         }
-        Ok(self - rhs)
+        let mut out = Matrix::new(self.rows, self.cols);
+
+        Simd::arithmetics_f32(
+            &self.data,
+            &rhs.data,
+            &mut out.data,
+            ArithmeticOperation::Subtraction,
+        );
+
+        Ok(out)
     }
 }
 
 impl Index<(usize, usize)> for Matrix {
-    type Output = f64;
+    type Output = f32;
     fn index(&self, (row, col): (usize, usize)) -> &Self::Output {
         &self.data[row * self.cols + col]
     }
@@ -52,8 +73,8 @@ impl IndexMut<(usize, usize)> for Matrix {
     }
 }
 
-impl From<Vec<f64>> for Matrix {
-    fn from(value: Vec<f64>) -> Self {
+impl From<Vec<f32>> for Matrix {
+    fn from(value: Vec<f32>) -> Self {
         Self {
             rows: 1usize,
             cols: value.len(),
@@ -64,29 +85,29 @@ impl From<Vec<f64>> for Matrix {
 
 impl Add for Matrix {
     type Output = Matrix;
-    fn add(self, _rhs: Self) -> Self::Output {
-        unimplemented!()
+    fn add(self, rhs: Self) -> Self::Output {
+        self.try_add(&rhs).expect("matrix dimensions do not match")
     }
 }
 
 impl Add for &Matrix {
     type Output = Matrix;
-    fn add(self, _rhs: Self) -> Self::Output {
-        unimplemented!()
+    fn add(self, rhs: Self) -> Self::Output {
+        self.try_add(&rhs).expect("matrix dimensions do not match")
     }
 }
 
 impl Sub for Matrix {
     type Output = Matrix;
-    fn sub(self, _rhs: Self) -> Self::Output {
-        unimplemented!()
+    fn sub(self, rhs: Self) -> Self::Output {
+        self.try_sub(&rhs).expect("matrix dimensions do not match")
     }
 }
 
 impl Sub for &Matrix {
     type Output = Matrix;
-    fn sub(self, _rhs: Self) -> Self::Output {
-        unimplemented!()
+    fn sub(self, rhs: Self) -> Self::Output {
+        self.try_sub(&rhs).expect("matrix dimensions do not match")
     }
 }
 

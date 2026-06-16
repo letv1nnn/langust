@@ -13,10 +13,30 @@ pub(crate) enum ArithmeticOperation {
 
 pub(crate) struct Simd;
 
+// public api
+impl Simd {
+    pub(crate) fn arithmetics_f32(
+        v1: &[f32],
+        v2: &[f32],
+        out: &mut [f32],
+        operation: ArithmeticOperation,
+    ) {
+        #[cfg(target_arch = "aarch64")]
+        unsafe {
+            Simd::arithmetics_f32_aarch64(v1, v2, out, operation);
+        }
+        #[cfg(target_arch = "x86_64")]
+        unsafe {
+            Simd::arithmetics_f32_x86_64(v1, v2, out, operation);
+        }
+    }
+}
+
+// private api
 impl Simd {
     #[cfg(target_arch = "aarch64")]
     #[target_feature(enable = "neon")]
-    pub(crate) fn simd_arithmetics_f32(
+    fn arithmetics_f32_aarch64(
         v1: &[f32],
         v2: &[f32],
         out: &mut [f32],
@@ -40,14 +60,14 @@ impl Simd {
         while i < v1.len() {
             match operation {
                 ArithmeticOperation::Addition => out[i] = v1[i] + v2[i],
-                ArithmeticOperation::Subtraction => out[i] = v1[i] + v2[i],
+                ArithmeticOperation::Subtraction => out[i] = v1[i] - v2[i],
             }
             i += 1
         }
     }
 
     #[cfg(target_arch = "x86_64")]
-    pub(crate) fn simd_arithmetics_f32(
+    fn simd_arithmetics_f32_x86_64(
         v1: &[f32],
         v2: &[f32],
         out: &mut [f32],
@@ -82,7 +102,7 @@ mod simd_arithmetic_operation_tests {
 
         reference_arithmetics(&v1, &v2, &mut actual, ArithmeticOperation::Addition);
         unsafe {
-            Simd::simd_arithmetics_f32(&v1, &v2, &mut expected, ArithmeticOperation::Addition);
+            Simd::arithmetics_f32(&v1, &v2, &mut expected, ArithmeticOperation::Addition);
         }
     }
 
@@ -93,7 +113,7 @@ mod simd_arithmetic_operation_tests {
 
         reference_arithmetics(&v1, &v2, &mut actual, ArithmeticOperation::Subtraction);
         unsafe {
-            Simd::simd_arithmetics_f32(&v1, &v2, &mut expected, ArithmeticOperation::Subtraction);
+            Simd::arithmetics_f32(&v1, &v2, &mut expected, ArithmeticOperation::Subtraction);
         }
     }
 }
