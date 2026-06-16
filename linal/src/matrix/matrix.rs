@@ -1,7 +1,9 @@
 use std::ops::{Add, Index, IndexMut, Sub};
 
-use crate::matrix::simd::{ArithmeticOperation, kernel_arithmetics};
+use crate::matrix::{errors::MatrixError, simd::{ArithmeticOperation, kernel_arithmetics}};
 
+
+// TODO: Change to f32, so SIMD would calculate twice as faster.
 #[repr(C)]
 #[derive(Debug, PartialEq, PartialOrd)]
 pub struct Matrix {
@@ -23,6 +25,18 @@ impl Matrix {
     }
     pub const fn cols(&self) -> usize {
         self.cols
+    }
+    pub fn try_add(&self, rhs: &Self) -> Result<Self, MatrixError> {
+        if self.rows != rhs.rows || self.cols != rhs.cols {
+            return Err(MatrixError::ShapeMismatch);
+        }
+        Ok(self + rhs)
+    }
+    pub fn try_sub(&self, rhs: &Self) -> Result<Self, MatrixError> {
+        if self.rows != rhs.rows || self.cols != rhs.cols {
+            return Err(MatrixError::ShapeMismatch);
+        }
+        Ok(self - rhs)
     }
 }
 
@@ -70,6 +84,13 @@ impl Add for Matrix {
     }
 }
 
+impl Add for &Matrix {
+    type Output = Matrix;
+    fn add(self, _rhs: Self) -> Self::Output {
+        unimplemented!()
+    }
+}
+
 impl Sub for Matrix {
     type Output = Matrix;
     fn sub(self, rhs: Self) -> Self::Output {
@@ -88,6 +109,13 @@ impl Sub for Matrix {
             rows: self.rows,
             cols: self.cols,
         }
+    }
+}
+
+impl Sub for &Matrix {
+    type Output = Matrix;
+    fn sub(self, _rhs: Self) -> Self::Output {
+        unimplemented!()
     }
 }
 

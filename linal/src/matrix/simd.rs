@@ -1,5 +1,7 @@
 use std::arch::x86_64::*;
 
+// TODO: implement for AVX registers.
+
 #[derive(Clone, Copy)]
 pub(crate) enum ArithmeticOperation {
     Addition,

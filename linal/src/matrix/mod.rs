@@ -3,5 +3,6 @@
 
 pub mod matrix;
 pub mod simd;
+pub mod errors; 
 
 pub use matrix::Matrix;
