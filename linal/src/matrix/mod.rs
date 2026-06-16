@@ -1,8 +1,5 @@
-// STRUCTS:
-// StaticMatrix, DynMatrix, DataSet(static/dynamic), ...
-
-pub mod matrix;
+pub mod core;
+pub mod errors;
 pub mod simd;
-pub mod errors; 
 
-pub use matrix::Matrix;
+pub use core::Matrix;
