@@ -124,17 +124,14 @@ impl Add for &Matrix {
 }
 
 impl AddAssign for Matrix {
-    fn add_assign(&mut self, _rhs: Self) {
-        unimplemented!()
+    fn add_assign(&mut self, rhs: Self) {
+        assert_eq!(self.rows, rhs.rows, "matrix dimensions do not match");
+        assert_eq!(self.cols, rhs.cols, "matrix dimensions do not match");
+        Simd::arithmetics_f32_inplace(&mut self.data, &rhs.data, ArithmeticOperation::Addition);
     }
 }
 
-impl AddAssign for &Matrix {
-    fn add_assign(&mut self, _rhs: Self) {
-        unimplemented!()
-    }
-}
-
+// need to find a way to not clone the initial vector
 impl Sub for Matrix {
     type Output = Matrix;
     fn sub(self, rhs: Self) -> Self::Output {
@@ -150,14 +147,10 @@ impl Sub for &Matrix {
 }
 
 impl SubAssign for Matrix {
-    fn sub_assign(&mut self, _rhs: Self) {
-        unimplemented!()
-    }
-}
-
-impl SubAssign for &Matrix {
-    fn sub_assign(&mut self, _rhs: Self) {
-        unimplemented!()
+    fn sub_assign(&mut self, rhs: Self) {
+        assert_eq!(self.rows, rhs.rows, "matrix dimensions do not match");
+        assert_eq!(self.cols, rhs.cols, "matrix dimensions do not match");
+        Simd::arithmetics_f32_inplace(&mut self.data, &rhs.data, ArithmeticOperation::Subtraction);
     }
 }
 
