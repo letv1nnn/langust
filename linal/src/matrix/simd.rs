@@ -1,6 +1,9 @@
-use std::arch::x86_64::*;
+#![allow(unused)]
 
-// TODO: implement for AVX registers.
+#[cfg(target_arch = "aarch64")]
+use std::arch::aarch64::*;
+#[cfg(target_arch = "x86_64")]
+use std::arch::x86_64::*;
 
 #[derive(Clone, Copy)]
 pub(crate) enum ArithmeticOperation {
@@ -8,83 +11,60 @@ pub(crate) enum ArithmeticOperation {
     Subtraction,
 }
 
-#[target_feature(enable = "avx512f")]
-fn raw_simd_arithmetics_on_8_f64(
-    v1: *const f64,
-    v2: *const f64,
-    out: *mut f64,
-    operation: ArithmeticOperation,
-) {
-    unsafe {
-        let va = _mm512_loadu_pd(v1);
-        let vb = _mm512_loadu_pd(v2);
-        match operation {
-            ArithmeticOperation::Addition => _mm512_storeu_pd(out, _mm512_add_pd(va, vb)),
-            ArithmeticOperation::Subtraction => _mm512_storeu_pd(out, _mm512_sub_pd(va, vb)),
-        }
-    }
-}
+pub(crate) struct Simd;
 
-fn raw_simd_arithmetics_x86_64(
-    v1: *const f64,
-    v2: *const f64,
-    out: *mut f64,
-    len: usize,
-    operation: ArithmeticOperation,
-) {
-    let mut i = 0usize;
-    while i + 8 <= len {
-        unsafe {
-            raw_simd_arithmetics_on_8_f64(v1.add(i), v2.add(i), out.add(i), operation);
-        }
-        i += 8;
-    }
-    while i < len {
-        unsafe {
-            *out.add(i) = match operation {
-                ArithmeticOperation::Addition => *v1.add(i) + *v2.add(i),
-                ArithmeticOperation::Subtraction => *v1.add(i) - *v2.add(i),
-            };
-        }
-        i += 1;
-    }
-}
+impl Simd {
+    #[cfg(target_arch = "aarch64")]
+    #[target_feature(enable = "neon")]
+    pub(crate) fn simd_arithmetics_f32(
+        v1: &[f32],
+        v2: &[f32],
+        out: &mut [f32],
+        operation: ArithmeticOperation,
+    ) {
+        let mut i = 0usize;
+        while i + 4usize < v1.len() {
+            unsafe {
+                let v1_simd = vld1q_f32(v1.as_ptr().add(i));
+                let v2_simd = vld1q_f32(v2.as_ptr().add(i));
 
-pub(crate) fn kernel_arithmetics(
-    a: &[f64],
-    b: &[f64],
-    out: &mut [f64],
-    operation: ArithmeticOperation,
-) {
+                let result = match operation {
+                    ArithmeticOperation::Addition => vaddq_f32(v1_simd, v2_simd),
+                    ArithmeticOperation::Subtraction => vsubq_f32(v1_simd, v2_simd),
+                };
+
+                vst1q_f32(out.as_mut_ptr().add(i), result);
+            }
+            i += 4;
+        }
+        while i < v1.len() {
+            match operation {
+                ArithmeticOperation::Addition => out[i] = v1[i] + v2[i],
+                ArithmeticOperation::Subtraction => out[i] = v1[i] + v2[i],
+            }
+            i += 1
+        }
+    }
+
     #[cfg(target_arch = "x86_64")]
-    {
-        if is_x86_feature_detected!("avx512f") {
-            return raw_simd_arithmetics_x86_64(
-                a.as_ptr(),
-                b.as_ptr(),
-                out.as_mut_ptr(),
-                a.len(),
-                operation,
-            );
-        }
-    }
-
-    for i in 0..a.len() {
-        out[i] = match operation {
-            ArithmeticOperation::Addition => a[i] + b[i],
-            ArithmeticOperation::Subtraction => a[i] - b[i],
-        }
+    pub(crate) fn simd_arithmetics_f32(
+        v1: &[f32],
+        v2: &[f32],
+        out: &mut [f32],
+        operation: ArithmeticOperation,
+    ) {
+        unimplemented!()
     }
 }
 
 #[cfg(test)]
-mod simd_tests {
+mod simd_arithmetic_operation_tests {
     use super::*;
 
     fn reference_arithmetics(
-        a: &[f64],
-        b: &[f64],
-        out: &mut [f64],
+        a: &[f32],
+        b: &[f32],
+        out: &mut [f32],
         operation: ArithmeticOperation,
     ) {
         for i in 0..a.len() {
@@ -96,57 +76,24 @@ mod simd_tests {
     }
 
     #[test]
-    fn addition_small() {
-        let a = vec![1.0, 2.0, 3.0];
-        let b = vec![4.0, 5.0, 6.0];
-        let mut actual = vec![0.0; 3];
-        let mut expected = vec![0.0; 3];
+    fn addition() {
+        let (v1, v2) = (vec![1.0f32, 2.0f32, 3.0], vec![4.0f32, 5.0f32, 6.0f32]);
+        let (mut actual, mut expected) = (vec![0.0; 3], vec![0.0; 3]);
 
-        kernel_arithmetics(&a, &b, &mut actual, ArithmeticOperation::Addition);
-        reference_arithmetics(&a, &b, &mut expected, ArithmeticOperation::Addition);
-
-        assert_eq!(actual, expected);
+        reference_arithmetics(&v1, &v2, &mut actual, ArithmeticOperation::Addition);
+        unsafe {
+            Simd::simd_arithmetics_f32(&v1, &v2, &mut expected, ArithmeticOperation::Addition);
+        }
     }
 
     #[test]
-    fn subtraction_small() {
-        let a = vec![10.0, 20.0, 30.0];
-        let b = vec![1.0, 2.0, 3.0];
+    fn subtraction() {
+        let (v1, v2) = (vec![1.0f32, 2.0f32, 3.0], vec![4.0f32, 5.0f32, 6.0f32]);
+        let (mut actual, mut expected) = (vec![0.0; 3], vec![0.0; 3]);
 
-        let mut actual = vec![0.0; 3];
-        let mut expected = vec![0.0; 3];
-
-        kernel_arithmetics(&a, &b, &mut actual, ArithmeticOperation::Subtraction);
-        reference_arithmetics(&a, &b, &mut expected, ArithmeticOperation::Subtraction);
-
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn addition_exact_simd_block() {
-        let a: Vec<f64> = (0..8).map(|x| x as f64).collect();
-        let b: Vec<f64> = (0..8).map(|x| (x * 2) as f64).collect();
-
-        let mut actual = vec![0.0; 8];
-        let mut expected = vec![0.0; 8];
-
-        kernel_arithmetics(&a, &b, &mut actual, ArithmeticOperation::Addition);
-        reference_arithmetics(&a, &b, &mut expected, ArithmeticOperation::Addition);
-
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn subtraction_exact_simd_block() {
-        let a: Vec<f64> = (0..8).map(|x| (x * 5) as f64).collect();
-        let b: Vec<f64> = (0..8).map(|x| x as f64).collect();
-
-        let mut actual = vec![0.0; 8];
-        let mut expected = vec![0.0; 8];
-
-        kernel_arithmetics(&a, &b, &mut actual, ArithmeticOperation::Subtraction);
-        reference_arithmetics(&a, &b, &mut expected, ArithmeticOperation::Subtraction);
-
-        assert_eq!(actual, expected);
+        reference_arithmetics(&v1, &v2, &mut actual, ArithmeticOperation::Subtraction);
+        unsafe {
+            Simd::simd_arithmetics_f32(&v1, &v2, &mut expected, ArithmeticOperation::Subtraction);
+        }
     }
 }

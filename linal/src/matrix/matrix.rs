@@ -1,7 +1,6 @@
 use std::ops::{Add, Index, IndexMut, Sub};
 
-use crate::matrix::{errors::MatrixError, simd::{ArithmeticOperation, kernel_arithmetics}};
-
+use crate::matrix::errors::MatrixError;
 
 // TODO: Change to f32, so SIMD would calculate twice as faster.
 #[repr(C)]
@@ -65,22 +64,8 @@ impl From<Vec<f64>> for Matrix {
 
 impl Add for Matrix {
     type Output = Matrix;
-    fn add(self, rhs: Self) -> Self::Output {
-        let len = self.rows * self.cols;
-        let mut out = vec![0.0f64; len];
-
-        kernel_arithmetics(
-            &self.data,
-            &rhs.data,
-            &mut out,
-            ArithmeticOperation::Addition,
-        );
-
-        Matrix {
-            data: out,
-            rows: self.rows,
-            cols: self.cols,
-        }
+    fn add(self, _rhs: Self) -> Self::Output {
+        unimplemented!()
     }
 }
 
@@ -93,22 +78,8 @@ impl Add for &Matrix {
 
 impl Sub for Matrix {
     type Output = Matrix;
-    fn sub(self, rhs: Self) -> Self::Output {
-        let len = self.rows * self.cols;
-        let mut out = vec![0.0f64; len];
-
-        kernel_arithmetics(
-            &self.data,
-            &rhs.data,
-            &mut out,
-            ArithmeticOperation::Subtraction,
-        );
-
-        Matrix {
-            data: out,
-            rows: self.rows,
-            cols: self.cols,
-        }
+    fn sub(self, _rhs: Self) -> Self::Output {
+        unimplemented!()
     }
 }
 
