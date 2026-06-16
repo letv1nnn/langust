@@ -67,13 +67,35 @@ impl Simd {
     }
 
     #[cfg(target_arch = "x86_64")]
-    fn simd_arithmetics_f32_x86_64(
+    #[target_feature(enable = "sse")]
+    fn arithmetics_f32_x86_64(
         v1: &[f32],
         v2: &[f32],
         out: &mut [f32],
         operation: ArithmeticOperation,
     ) {
-        unimplemented!()
+        let mut i = 0usize;
+        while i + 4usize <= v1.len() {
+            unsafe {
+                let v1_simd = _mm_loadu_ps(v1.as_ptr().add(i));
+                let v2_simd = _mm_loadu_ps(v2.as_ptr().add(i));
+
+                let result = match operation {
+                    ArithmeticOperation::Addition => _mm_add_ps(v1_simd, v2_simd),
+                    ArithmeticOperation::Subtraction => _mm_sub_ps(v1_simd, v2_simd),
+                };
+
+                _mm_storeu_ps(out.as_mut_ptr().add(i), result);
+            }
+            i += 4;
+        }
+        while i < v1.len() {
+            match operation {
+                ArithmeticOperation::Addition => out[i] = v1[i] + v2[i],
+                ArithmeticOperation::Subtraction => out[i] = v1[i] - v2[i],
+            }
+            i += 1
+        }
     }
 }
 
