@@ -1,4 +1,4 @@
-use std::ops::{Add, Index, IndexMut, Sub};
+use std::ops::{Add, AddAssign, Index, IndexMut, Sub, SubAssign};
 
 use crate::matrix::{
     errors::MatrixError,
@@ -28,6 +28,32 @@ impl Matrix {
     pub const fn cols(&self) -> usize {
         self.cols
     }
+    pub const fn is_square(&self) -> bool {
+        self.rows == self.cols
+    }
+}
+
+// linear algebra operations
+impl Matrix {
+    pub fn identity(rows: usize, cols: usize) -> Self {
+        let mut identity_matrix = Self::new(rows, cols);
+
+        let (mut row, mut col) = (0usize, 0usize);
+        while row < identity_matrix.rows && col < identity_matrix.cols {
+            identity_matrix[(row, col)] = 1.0f32;
+            row += 1;
+            col += 1;
+        }
+        identity_matrix
+    }
+
+    pub fn transpose(&mut self) {
+        unimplemented!()
+    }
+}
+
+// arithmetics
+impl Matrix {
     pub fn try_add(&self, rhs: &Self) -> Result<Self, MatrixError> {
         if self.rows != rhs.rows || self.cols != rhs.cols {
             return Err(MatrixError::ShapeMismatch);
@@ -97,6 +123,18 @@ impl Add for &Matrix {
     }
 }
 
+impl AddAssign for Matrix {
+    fn add_assign(&mut self, _rhs: Self) {
+        unimplemented!()
+    }
+}
+
+impl AddAssign for &Matrix {
+    fn add_assign(&mut self, _rhs: Self) {
+        unimplemented!()
+    }
+}
+
 impl Sub for Matrix {
     type Output = Matrix;
     fn sub(self, rhs: Self) -> Self::Output {
@@ -111,8 +149,49 @@ impl Sub for &Matrix {
     }
 }
 
+impl SubAssign for Matrix {
+    fn sub_assign(&mut self, _rhs: Self) {
+        unimplemented!()
+    }
+}
+
+impl SubAssign for &Matrix {
+    fn sub_assign(&mut self, _rhs: Self) {
+        unimplemented!()
+    }
+}
+
 #[cfg(test)]
-mod matrix_tests {
+mod matrix_general_tests {
+    use std::cmp::min;
+
+    use super::*;
+
+    fn is_identity(matrix: &Matrix) -> bool {
+        let range = min(matrix.rows, matrix.cols);
+        for i in 0..range {
+            if matrix[(i, i)] != 1.0f32 {
+                return false;
+            }
+        }
+        true
+    }
+
+    #[test]
+    fn identity_matrix_initialization() {
+        let im1 = Matrix::identity(3usize, 3usize);
+        assert!(is_identity(&im1));
+
+        let im2 = Matrix::identity(5usize, 1usize);
+        assert!(is_identity(&im2));
+
+        let im3 = Matrix::identity(2usize, 7usize);
+        assert!(is_identity(&im3));
+    }
+}
+
+#[cfg(test)]
+mod matrix_arithmetic_operations_tests {
     use super::*;
 
     #[test]
