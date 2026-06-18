@@ -2,7 +2,8 @@ use std::{error::Error, fmt::Display};
 
 pub(crate) type SimdResult = Result<(), SimdError>;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[allow(dead_code)]
+#[derive(Debug, PartialEq, Eq)]
 pub(crate) enum SimdError {
     LengthMismatch { expected: usize, got: usize },
 }
@@ -20,7 +21,7 @@ impl Display for SimdError {
 impl Error for SimdError {}
 
 // utility functions
-pub(crate) const fn check_for_length_mismatch<T>(a: &[T], b: &[T]) -> SimdResult {
+pub(super) const fn check_for_length_mismatch<T>(a: &[T], b: &[T]) -> SimdResult {
     if a.len() != b.len() {
         return Err(SimdError::LengthMismatch {
             expected: a.len(),

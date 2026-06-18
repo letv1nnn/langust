@@ -16,8 +16,7 @@ Columnar array library with SIMD acceleration for ML. One array primitive serves
 │   AnySeries enum     │  matmul, dot, transpose  │                                                   
 ├──────────────────────┴──────────────────────────┤                                                   
 │              Typed Arrays                       │                                                   
-│  PrimitiveArray<T>  StringArray  BooleanArray   │                                                   
-│              NullBuffer (bitmap)                │                                                   
+│              PrimitiveArray<T>                  │                                                   
 ├─────────────────────────────────────────────────┤                                                   
 │                SIMD Engine                      │                                                   
 │     SimdOps trait — f32/f64/i32/i64             │                                                   
@@ -50,10 +49,4 @@ CSV → DataFrame → wrangle → .to_contiguous() → LinAlg ops → DataFrame
 | Type | SIMD | Use Case |
 |------|------|----------|
 | f32 | yes | Features, weights, predictions |
-| f64 | planned | Gradients, loss |
-| i32 | planned | Labels, indices |
-| i64 | planned | Counts, timestamps |
-| bool | bitwise | Masks, filters |
-| String | no | Categories, column names |
-
-All types support null via NullBuffer bitmap.
+| f64 | no | Gradients, loss |

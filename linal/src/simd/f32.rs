@@ -181,8 +181,6 @@ mod f32_simdops_tests {
         scalar_tail_inplace(out, b, 0usize, op);
     }
 
-    // ---- addition ----
-
     #[test]
     fn addition() {
         let v1 = vec![1.2, 2.3, 3.4, 4.5, 5.6, 6.7, 7.8, 8.9, 9.0];
@@ -208,8 +206,6 @@ mod f32_simdops_tests {
 
         assert_eq!(actual, expected);
     }
-
-    // ---- subtraction ----
 
     #[test]
     fn subtraction() {
@@ -237,8 +233,6 @@ mod f32_simdops_tests {
         assert_eq!(actual, expected);
     }
 
-    // ---- multiplication ----
-
     #[test]
     fn multiplication() {
         let v1 = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
@@ -264,8 +258,6 @@ mod f32_simdops_tests {
 
         assert_eq!(actual, expected);
     }
-
-    // ---- division ----
 
     #[test]
     fn division() {
@@ -305,8 +297,6 @@ mod f32_simdops_tests {
             assert!(val.is_infinite());
         }
     }
-
-    // ---- edge cases: various lengths ----
 
     #[test]
     fn empty_vectors() {
@@ -369,15 +359,19 @@ mod f32_simdops_tests {
         }
     }
 
-    // ---- length mismatch errors ----
-
     #[test]
     fn length_mismatch_returns_error() {
         let (v1, v2) = (vec![1.0f32; 4], vec![1.0f32; 3]);
         let mut out = vec![0.0f32; 4];
 
         let err = f32::arithmetic(&v1, &v2, &mut out, ArithmeticOperation::Addition).unwrap_err();
-        assert_eq!(err, SimdError::LengthMismatch { expected: 4, got: 3 });
+        assert_eq!(
+            err,
+            SimdError::LengthMismatch {
+                expected: 4,
+                got: 3
+            }
+        );
     }
 
     #[test]
@@ -386,7 +380,13 @@ mod f32_simdops_tests {
         let mut out = vec![0.0f32; 2];
 
         let err = f32::arithmetic(&v1, &v2, &mut out, ArithmeticOperation::Addition).unwrap_err();
-        assert_eq!(err, SimdError::LengthMismatch { expected: 4, got: 2 });
+        assert_eq!(
+            err,
+            SimdError::LengthMismatch {
+                expected: 4,
+                got: 2
+            }
+        );
     }
 
     #[test]
@@ -394,8 +394,15 @@ mod f32_simdops_tests {
         let v2 = vec![1.0f32; 3];
         let mut out = vec![0.0f32; 5];
 
-        let err = f32::arithmetic_inplace(&mut out, &v2, ArithmeticOperation::Addition).unwrap_err();
-        assert_eq!(err, SimdError::LengthMismatch { expected: 5, got: 3 });
+        let err =
+            f32::arithmetic_inplace(&mut out, &v2, ArithmeticOperation::Addition).unwrap_err();
+        assert_eq!(
+            err,
+            SimdError::LengthMismatch {
+                expected: 5,
+                got: 3
+            }
+        );
     }
 
     #[test]
@@ -407,11 +414,11 @@ mod f32_simdops_tests {
         assert!(f32::arithmetic(&v1, &v2, &mut out, ArithmeticOperation::Multiplication).is_err());
         assert!(f32::arithmetic(&v1, &v2, &mut out, ArithmeticOperation::Division).is_err());
         assert!(f32::arithmetic_inplace(&mut out, &v2, ArithmeticOperation::Subtraction).is_err());
-        assert!(f32::arithmetic_inplace(&mut out, &v2, ArithmeticOperation::Multiplication).is_err());
+        assert!(
+            f32::arithmetic_inplace(&mut out, &v2, ArithmeticOperation::Multiplication).is_err()
+        );
         assert!(f32::arithmetic_inplace(&mut out, &v2, ArithmeticOperation::Division).is_err());
     }
-
-    // ---- negative values ----
 
     #[test]
     fn negative_values() {
