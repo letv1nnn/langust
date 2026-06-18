@@ -1,4 +1,5 @@
 use crate::simd::errors::{SimdResult, check_for_length_mismatch};
+use crate::simd::traits::ArithmeticOperation;
 
 use super::traits::SimdOps;
 
@@ -7,183 +8,38 @@ use std::arch::aarch64::*;
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
 
-#[derive(Clone, Copy)]
-enum ArithmeticOperation {
-    Addition,
-    Subtraction,
-    Multiplication,
-    Division,
-}
-
 impl SimdOps for f32 {
-    fn add(a: &[Self], b: &[Self], out: &mut [Self]) -> SimdResult {
+    fn arithmetic(a: &[Self], b: &[Self], out: &mut [Self], op: ArithmeticOperation) -> SimdResult {
         check_for_length_mismatch(a, b)?;
         check_for_length_mismatch(a, out)?;
 
         #[cfg(target_arch = "aarch64")]
         unsafe {
-            arithmetics_f32_aarch64(a, b, out, ArithmeticOperation::Addition);
+            dispatch_aarch64(a, b, out, op);
         }
         #[cfg(target_arch = "x86_64")]
         unsafe {
-            arithmetics_f32_x86_64(a, b, out, ArithmeticOperation::Addition);
+            dispatch_x86_64(a, b, out, op);
         }
         #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-        {
-            for i in 0..a.len() {
-                out[i] = a[i] + b[i];
-            }
-        }
+        scalar_tail(a, b, out, 0, op);
 
         Ok(())
     }
 
-    fn sub(a: &[Self], b: &[Self], out: &mut [Self]) -> SimdResult {
-        check_for_length_mismatch(a, b)?;
-        check_for_length_mismatch(a, out)?;
-
-        #[cfg(target_arch = "aarch64")]
-        unsafe {
-            arithmetics_f32_aarch64(a, b, out, ArithmeticOperation::Subtraction);
-        }
-        #[cfg(target_arch = "x86_64")]
-        unsafe {
-            arithmetics_f32_x86_64(a, b, out, ArithmeticOperation::Subtraction);
-        }
-        #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-        {
-            for i in 0..a.len() {
-                out[i] = a[i] - b[i];
-            }
-        }
-
-        Ok(())
-    }
-
-    fn mul(a: &[Self], b: &[Self], out: &mut [Self]) -> SimdResult {
-        check_for_length_mismatch(a, b)?;
-        check_for_length_mismatch(a, out)?;
-
-        #[cfg(target_arch = "aarch64")]
-        unsafe {
-            arithmetics_f32_aarch64(a, b, out, ArithmeticOperation::Multiplication);
-        }
-        #[cfg(target_arch = "x86_64")]
-        unsafe {
-            arithmetics_f32_x86_64(a, b, out, ArithmeticOperation::Multiplication);
-        }
-        #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-        {
-            for i in 0..a.len() {
-                out[i] = a[i] * b[i];
-            }
-        }
-
-        Ok(())
-    }
-
-    fn div(a: &[Self], b: &[Self], out: &mut [Self]) -> SimdResult {
-        check_for_length_mismatch(a, b)?;
-        check_for_length_mismatch(a, out)?;
-
-        #[cfg(target_arch = "aarch64")]
-        unsafe {
-            arithmetics_f32_aarch64(a, b, out, ArithmeticOperation::Division);
-        }
-        #[cfg(target_arch = "x86_64")]
-        unsafe {
-            arithmetics_f32_x86_64(a, b, out, ArithmeticOperation::Division);
-        }
-        #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-        {
-            for i in 0..a.len() {
-                out[i] = a[i] / b[i];
-            }
-        }
-
-        Ok(())
-    }
-
-    fn add_inplace(out: &mut [Self], value: &[Self]) -> SimdResult {
+    fn arithmetic_inplace(out: &mut [Self], value: &[Self], op: ArithmeticOperation) -> SimdResult {
         check_for_length_mismatch(out, value)?;
 
         #[cfg(target_arch = "aarch64")]
         unsafe {
-            arithmetics_f32_inplace_aarch64(out, value, ArithmeticOperation::Addition);
+            dispatch_inplace_aarch64(out, value, op);
         }
         #[cfg(target_arch = "x86_64")]
         unsafe {
-            arithmetics_f32_inplace_x86_64(out, value, ArithmeticOperation::Addition);
+            dispatch_inplace_x86_64(out, value, op);
         }
         #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-        {
-            for i in 0..out.len() {
-                out[i] += value[i];
-            }
-        }
-
-        Ok(())
-    }
-
-    fn sub_inplace(out: &mut [Self], value: &[Self]) -> SimdResult {
-        check_for_length_mismatch(out, value)?;
-
-        #[cfg(target_arch = "x86_64")]
-        unsafe {
-            arithmetics_f32_inplace_x86_64(out, value, ArithmeticOperation::Subtraction);
-        }
-        #[cfg(target_arch = "aarch64")]
-        unsafe {
-            arithmetics_f32_inplace_aarch64(out, value, ArithmeticOperation::Subtraction);
-        }
-        #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-        {
-            for i in 0..out.len() {
-                out[i] -= value[i];
-            }
-        }
-
-        Ok(())
-    }
-
-    fn mul_inplace(out: &mut [Self], value: &[Self]) -> SimdResult {
-        check_for_length_mismatch(out, value)?;
-
-        #[cfg(target_arch = "x86_64")]
-        unsafe {
-            arithmetics_f32_inplace_x86_64(out, value, ArithmeticOperation::Multiplication);
-        }
-        #[cfg(target_arch = "aarch64")]
-        unsafe {
-            arithmetics_f32_inplace_aarch64(out, value, ArithmeticOperation::Multiplication);
-        }
-        #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-        {
-            for i in 0..out.len() {
-                out[i] *= value[i];
-            }
-        }
-
-        Ok(())
-    }
-
-    fn div_inplace(out: &mut [Self], value: &[Self]) -> SimdResult {
-        check_for_length_mismatch(out, value)?;
-
-        #[cfg(target_arch = "x86_64")]
-        unsafe {
-            arithmetics_f32_inplace_x86_64(out, value, ArithmeticOperation::Division);
-        }
-        #[cfg(target_arch = "aarch64")]
-        unsafe {
-            arithmetics_f32_inplace_aarch64(out, value, ArithmeticOperation::Division);
-        }
-        #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-        {
-            for i in 0..out.len() {
-                out[i] /= value[i];
-            }
-        }
+        scalar_tail_inplace(out, value, 0, op);
 
         Ok(())
     }
@@ -191,13 +47,13 @@ impl SimdOps for f32 {
 
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
-fn arithmetics_f32_aarch64(a: &[f32], b: &[f32], out: &mut [f32], operation: ArithmeticOperation) {
+fn dispatch_aarch64(a: &[f32], b: &[f32], out: &mut [f32], op: ArithmeticOperation) {
     let mut i = 0usize;
     while i + 4usize <= a.len() {
         let a_simd = unsafe { vld1q_f32(a.as_ptr().add(i)) };
         let b_simd = unsafe { vld1q_f32(b.as_ptr().add(i)) };
 
-        let result = match operation {
+        let result = match op {
             ArithmeticOperation::Addition => vaddq_f32(a_simd, b_simd),
             ArithmeticOperation::Subtraction => vsubq_f32(a_simd, b_simd),
             ArithmeticOperation::Multiplication => vmulq_f32(a_simd, b_simd),
@@ -210,18 +66,18 @@ fn arithmetics_f32_aarch64(a: &[f32], b: &[f32], out: &mut [f32], operation: Ari
         i += 4usize;
     }
 
-    scalar_tail_f32(a, b, out, i, operation);
+    scalar_tail(a, b, out, i, op);
 }
 
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
-fn arithmetics_f32_x86_64(a: &[f32], b: &[f32], out: &mut [f32], operation: ArithmeticOperation) {
+fn dispatch_x86_64(a: &[f32], b: &[f32], out: &mut [f32], op: ArithmeticOperation) {
     let mut i = 0usize;
     while i + 8usize <= a.len() {
         let a_simd = unsafe { _mm256_loadu_ps(a.as_ptr().add(i)) };
         let b_simd = unsafe { _mm256_loadu_ps(b.as_ptr().add(i)) };
 
-        let result = match operation {
+        let result = match op {
             ArithmeticOperation::Addition => unsafe { _mm256_add_ps(a_simd, b_simd) },
             ArithmeticOperation::Subtraction => unsafe { _mm256_sub_ps(a_simd, b_simd) },
             ArithmeticOperation::Multiplication => unsafe { _mm256_mul_ps(a_simd, b_simd) },
@@ -234,18 +90,18 @@ fn arithmetics_f32_x86_64(a: &[f32], b: &[f32], out: &mut [f32], operation: Arit
         i += 8usize;
     }
 
-    scalar_tail_f32(a, b, out, i, operation);
+    scalar_tail(a, b, out, i, op);
 }
 
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
-fn arithmetics_f32_inplace_aarch64(out: &mut [f32], value: &[f32], operation: ArithmeticOperation) {
+fn dispatch_inplace_aarch64(out: &mut [f32], value: &[f32], op: ArithmeticOperation) {
     let mut i = 0usize;
     while i + 4usize <= out.len() {
         let out_simd = unsafe { vld1q_f32(out.as_ptr().add(i)) };
         let value_simd = unsafe { vld1q_f32(value.as_ptr().add(i)) };
 
-        let result = match operation {
+        let result = match op {
             ArithmeticOperation::Addition => vaddq_f32(out_simd, value_simd),
             ArithmeticOperation::Subtraction => vsubq_f32(out_simd, value_simd),
             ArithmeticOperation::Multiplication => vmulq_f32(out_simd, value_simd),
@@ -258,18 +114,18 @@ fn arithmetics_f32_inplace_aarch64(out: &mut [f32], value: &[f32], operation: Ar
         i += 4usize;
     }
 
-    scalar_tail_f32_inplace(out, value, i, operation);
+    scalar_tail_inplace(out, value, i, op);
 }
 
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
-fn arithmetics_f32_inplace_x86_64(out: &mut [f32], value: &[f32], operation: ArithmeticOperation) {
+fn dispatch_inplace_x86_64(out: &mut [f32], value: &[f32], op: ArithmeticOperation) {
     let mut i = 0usize;
     while i + 8usize <= out.len() {
         let out_simd = unsafe { _mm256_loadu_ps(out.as_ptr().add(i)) };
         let value_simd = unsafe { _mm256_loadu_ps(value.as_ptr().add(i)) };
 
-        let result = match operation {
+        let result = match op {
             ArithmeticOperation::Addition => unsafe { _mm256_add_ps(out_simd, value_simd) },
             ArithmeticOperation::Subtraction => unsafe { _mm256_sub_ps(out_simd, value_simd) },
             ArithmeticOperation::Multiplication => unsafe { _mm256_mul_ps(out_simd, value_simd) },
@@ -282,18 +138,12 @@ fn arithmetics_f32_inplace_x86_64(out: &mut [f32], value: &[f32], operation: Ari
         i += 8usize;
     }
 
-    scalar_tail_f32_inplace(out, value, i, operation);
+    scalar_tail_inplace(out, value, i, op);
 }
 
-fn scalar_tail_f32(
-    a: &[f32],
-    b: &[f32],
-    out: &mut [f32],
-    start: usize,
-    operation: ArithmeticOperation,
-) {
+fn scalar_tail(a: &[f32], b: &[f32], out: &mut [f32], start: usize, op: ArithmeticOperation) {
     for i in start..a.len() {
-        out[i] = match operation {
+        out[i] = match op {
             ArithmeticOperation::Addition => a[i] + b[i],
             ArithmeticOperation::Subtraction => a[i] - b[i],
             ArithmeticOperation::Multiplication => a[i] * b[i],
@@ -302,14 +152,9 @@ fn scalar_tail_f32(
     }
 }
 
-fn scalar_tail_f32_inplace(
-    out: &mut [f32],
-    value: &[f32],
-    start: usize,
-    operation: ArithmeticOperation,
-) {
+fn scalar_tail_inplace(out: &mut [f32], value: &[f32], start: usize, op: ArithmeticOperation) {
     for i in start..out.len() {
-        match operation {
+        match op {
             ArithmeticOperation::Addition => out[i] += value[i],
             ArithmeticOperation::Subtraction => out[i] -= value[i],
             ArithmeticOperation::Multiplication => out[i] *= value[i],
@@ -328,12 +173,12 @@ mod f32_simdops_tests {
             a.len() == b.len() && a.len() == out.len(),
             "vectors have different length"
         );
-        scalar_tail_f32(a, b, out, 0usize, op);
+        scalar_tail(a, b, out, 0usize, op);
     }
 
     fn reference_op_inplace(out: &mut [f32], b: &[f32], op: ArithmeticOperation) {
         assert!(out.len() == b.len(), "vectors have different length");
-        scalar_tail_f32_inplace(out, b, 0usize, op);
+        scalar_tail_inplace(out, b, 0usize, op);
     }
 
     // ---- addition ----
@@ -345,7 +190,7 @@ mod f32_simdops_tests {
 
         let (mut actual, mut expected) = (vec![0.0f32; v1.len()], vec![0.0f32; v1.len()]);
         reference_op(&v1, &v2, &mut expected, ArithmeticOperation::Addition);
-        f32::add(&v1, &v2, &mut actual).unwrap();
+        f32::arithmetic(&v1, &v2, &mut actual, ArithmeticOperation::Addition).unwrap();
 
         assert_eq!(actual, expected);
     }
@@ -359,7 +204,7 @@ mod f32_simdops_tests {
         reference_op_inplace(&mut expected, &v2, ArithmeticOperation::Addition);
 
         let mut actual = v1;
-        f32::add_inplace(&mut actual, &v2).unwrap();
+        f32::arithmetic_inplace(&mut actual, &v2, ArithmeticOperation::Addition).unwrap();
 
         assert_eq!(actual, expected);
     }
@@ -373,7 +218,7 @@ mod f32_simdops_tests {
 
         let (mut actual, mut expected) = (vec![0.0f32; v1.len()], vec![0.0f32; v1.len()]);
         reference_op(&v1, &v2, &mut expected, ArithmeticOperation::Subtraction);
-        f32::sub(&v1, &v2, &mut actual).unwrap();
+        f32::arithmetic(&v1, &v2, &mut actual, ArithmeticOperation::Subtraction).unwrap();
 
         assert_eq!(actual, expected);
     }
@@ -387,7 +232,7 @@ mod f32_simdops_tests {
         reference_op_inplace(&mut expected, &v2, ArithmeticOperation::Subtraction);
 
         let mut actual = v1;
-        f32::sub_inplace(&mut actual, &v2).unwrap();
+        f32::arithmetic_inplace(&mut actual, &v2, ArithmeticOperation::Subtraction).unwrap();
 
         assert_eq!(actual, expected);
     }
@@ -401,7 +246,7 @@ mod f32_simdops_tests {
 
         let (mut actual, mut expected) = (vec![0.0f32; v1.len()], vec![0.0f32; v1.len()]);
         reference_op(&v1, &v2, &mut expected, ArithmeticOperation::Multiplication);
-        f32::mul(&v1, &v2, &mut actual).unwrap();
+        f32::arithmetic(&v1, &v2, &mut actual, ArithmeticOperation::Multiplication).unwrap();
 
         assert_eq!(actual, expected);
     }
@@ -415,7 +260,7 @@ mod f32_simdops_tests {
         reference_op_inplace(&mut expected, &v2, ArithmeticOperation::Multiplication);
 
         let mut actual = v1;
-        f32::mul_inplace(&mut actual, &v2).unwrap();
+        f32::arithmetic_inplace(&mut actual, &v2, ArithmeticOperation::Multiplication).unwrap();
 
         assert_eq!(actual, expected);
     }
@@ -429,7 +274,7 @@ mod f32_simdops_tests {
 
         let (mut actual, mut expected) = (vec![0.0f32; v1.len()], vec![0.0f32; v1.len()]);
         reference_op(&v1, &v2, &mut expected, ArithmeticOperation::Division);
-        f32::div(&v1, &v2, &mut actual).unwrap();
+        f32::arithmetic(&v1, &v2, &mut actual, ArithmeticOperation::Division).unwrap();
 
         assert_eq!(actual, expected);
     }
@@ -443,7 +288,7 @@ mod f32_simdops_tests {
         reference_op_inplace(&mut expected, &v2, ArithmeticOperation::Division);
 
         let mut actual = v1;
-        f32::div_inplace(&mut actual, &v2).unwrap();
+        f32::arithmetic_inplace(&mut actual, &v2, ArithmeticOperation::Division).unwrap();
 
         assert_eq!(actual, expected);
     }
@@ -454,7 +299,7 @@ mod f32_simdops_tests {
         let v2 = vec![0.0, 0.0, 0.0];
         let mut out = vec![0.0f32; 3];
 
-        f32::div(&v1, &v2, &mut out).unwrap();
+        f32::arithmetic(&v1, &v2, &mut out, ArithmeticOperation::Division).unwrap();
 
         for val in &out {
             assert!(val.is_infinite());
@@ -468,10 +313,10 @@ mod f32_simdops_tests {
         let (v1, v2): (Vec<f32>, Vec<f32>) = (vec![], vec![]);
         let mut out: Vec<f32> = vec![];
 
-        f32::add(&v1, &v2, &mut out).unwrap();
+        f32::arithmetic(&v1, &v2, &mut out, ArithmeticOperation::Addition).unwrap();
         assert!(out.is_empty());
 
-        f32::add_inplace(&mut out, &v2).unwrap();
+        f32::arithmetic_inplace(&mut out, &v2, ArithmeticOperation::Addition).unwrap();
         assert!(out.is_empty());
     }
 
@@ -480,10 +325,10 @@ mod f32_simdops_tests {
         let (v1, v2) = (vec![3.0f32], vec![7.0f32]);
         let mut out = vec![0.0f32; 1];
 
-        f32::add(&v1, &v2, &mut out).unwrap();
+        f32::arithmetic(&v1, &v2, &mut out, ArithmeticOperation::Addition).unwrap();
         assert_eq!(out, vec![10.0]);
 
-        f32::mul(&v1, &v2, &mut out).unwrap();
+        f32::arithmetic(&v1, &v2, &mut out, ArithmeticOperation::Multiplication).unwrap();
         assert_eq!(out, vec![21.0]);
     }
 
@@ -493,10 +338,10 @@ mod f32_simdops_tests {
         let v2 = vec![2.0f32; 8];
         let mut out = vec![0.0f32; 8];
 
-        f32::add(&v1, &v2, &mut out).unwrap();
+        f32::arithmetic(&v1, &v2, &mut out, ArithmeticOperation::Addition).unwrap();
         assert_eq!(out, vec![3.0f32; 8]);
 
-        f32::mul(&v1, &v2, &mut out).unwrap();
+        f32::arithmetic(&v1, &v2, &mut out, ArithmeticOperation::Multiplication).unwrap();
         assert_eq!(out, vec![2.0f32; 8]);
     }
 
@@ -506,7 +351,7 @@ mod f32_simdops_tests {
         let v2 = vec![1.0f32; 11];
         let mut out = vec![0.0f32; 11];
 
-        f32::sub(&v1, &v2, &mut out).unwrap();
+        f32::arithmetic(&v1, &v2, &mut out, ArithmeticOperation::Subtraction).unwrap();
         let expected: Vec<f32> = (0..11).map(|i| i as f32).collect();
         assert_eq!(out, expected);
     }
@@ -518,7 +363,7 @@ mod f32_simdops_tests {
         let v2 = vec![1.0f32; n];
         let mut out = vec![0.0f32; n];
 
-        f32::add(&v1, &v2, &mut out).unwrap();
+        f32::arithmetic(&v1, &v2, &mut out, ArithmeticOperation::Addition).unwrap();
         for i in 0..n {
             assert_eq!(out[i], i as f32 + 1.0);
         }
@@ -531,7 +376,7 @@ mod f32_simdops_tests {
         let (v1, v2) = (vec![1.0f32; 4], vec![1.0f32; 3]);
         let mut out = vec![0.0f32; 4];
 
-        let err = f32::add(&v1, &v2, &mut out).unwrap_err();
+        let err = f32::arithmetic(&v1, &v2, &mut out, ArithmeticOperation::Addition).unwrap_err();
         assert_eq!(err, SimdError::LengthMismatch { expected: 4, got: 3 });
     }
 
@@ -540,7 +385,7 @@ mod f32_simdops_tests {
         let (v1, v2) = (vec![1.0f32; 4], vec![1.0f32; 4]);
         let mut out = vec![0.0f32; 2];
 
-        let err = f32::add(&v1, &v2, &mut out).unwrap_err();
+        let err = f32::arithmetic(&v1, &v2, &mut out, ArithmeticOperation::Addition).unwrap_err();
         assert_eq!(err, SimdError::LengthMismatch { expected: 4, got: 2 });
     }
 
@@ -549,7 +394,7 @@ mod f32_simdops_tests {
         let v2 = vec![1.0f32; 3];
         let mut out = vec![0.0f32; 5];
 
-        let err = f32::add_inplace(&mut out, &v2).unwrap_err();
+        let err = f32::arithmetic_inplace(&mut out, &v2, ArithmeticOperation::Addition).unwrap_err();
         assert_eq!(err, SimdError::LengthMismatch { expected: 5, got: 3 });
     }
 
@@ -558,12 +403,12 @@ mod f32_simdops_tests {
         let (v1, v2) = (vec![1.0f32; 4], vec![1.0f32; 2]);
         let mut out = vec![0.0f32; 4];
 
-        assert!(f32::sub(&v1, &v2, &mut out).is_err());
-        assert!(f32::mul(&v1, &v2, &mut out).is_err());
-        assert!(f32::div(&v1, &v2, &mut out).is_err());
-        assert!(f32::sub_inplace(&mut out, &v2).is_err());
-        assert!(f32::mul_inplace(&mut out, &v2).is_err());
-        assert!(f32::div_inplace(&mut out, &v2).is_err());
+        assert!(f32::arithmetic(&v1, &v2, &mut out, ArithmeticOperation::Subtraction).is_err());
+        assert!(f32::arithmetic(&v1, &v2, &mut out, ArithmeticOperation::Multiplication).is_err());
+        assert!(f32::arithmetic(&v1, &v2, &mut out, ArithmeticOperation::Division).is_err());
+        assert!(f32::arithmetic_inplace(&mut out, &v2, ArithmeticOperation::Subtraction).is_err());
+        assert!(f32::arithmetic_inplace(&mut out, &v2, ArithmeticOperation::Multiplication).is_err());
+        assert!(f32::arithmetic_inplace(&mut out, &v2, ArithmeticOperation::Division).is_err());
     }
 
     // ---- negative values ----
@@ -575,7 +420,7 @@ mod f32_simdops_tests {
 
         let (mut actual, mut expected) = (vec![0.0f32; v1.len()], vec![0.0f32; v1.len()]);
         reference_op(&v1, &v2, &mut expected, ArithmeticOperation::Multiplication);
-        f32::mul(&v1, &v2, &mut actual).unwrap();
+        f32::arithmetic(&v1, &v2, &mut actual, ArithmeticOperation::Multiplication).unwrap();
 
         assert_eq!(actual, expected);
     }

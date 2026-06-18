@@ -2,14 +2,15 @@
 
 use crate::simd::errors::SimdResult;
 
+#[derive(Clone, Copy)]
+pub(crate) enum ArithmeticOperation {
+    Addition,
+    Subtraction,
+    Multiplication,
+    Division,
+}
+
 pub(crate) trait SimdOps: Sized + Copy {
-    fn add(a: &[Self], b: &[Self], out: &mut [Self]) -> SimdResult;
-    fn sub(a: &[Self], b: &[Self], out: &mut [Self]) -> SimdResult;
-    fn mul(a: &[Self], b: &[Self], out: &mut [Self]) -> SimdResult;
-    fn div(a: &[Self], b: &[Self], out: &mut [Self]) -> SimdResult;
-    // inplace operations
-    fn add_inplace(out: &mut [Self], value: &[Self]) -> SimdResult;
-    fn sub_inplace(out: &mut [Self], value: &[Self]) -> SimdResult;
-    fn mul_inplace(out: &mut [Self], value: &[Self]) -> SimdResult;
-    fn div_inplace(out: &mut [Self], value: &[Self]) -> SimdResult;
+    fn arithmetic(a: &[Self], b: &[Self], out: &mut [Self], op: ArithmeticOperation) -> SimdResult;
+    fn arithmetic_inplace(out: &mut [Self], value: &[Self], op: ArithmeticOperation) -> SimdResult;
 }
