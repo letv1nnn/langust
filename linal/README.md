@@ -1,77 +1,59 @@
 # linal
 
-N-dimensional arrays with SIMD acceleration, heterogeneous dataframes with null support, and linear algebra operations for machine learning workloads. Built with AVX2/NEON intrinsics for performance on x86_64 and aarch64 architectures.
+Columnar array library with SIMD acceleration for ML. One array primitive serves both DataFrame columns and numerical compute. AVX2 (x86_64) / NEON (aarch64).
+
+## Architecture
 
 ```
-     linal/
-     └── src/
-         ├── types/          # DataType, Scalar, LinAlError
-         ├── simd/           # f32/f64/i32/i64 AVX2/NEON ops
-         ├── array/          # Array<T,D>, Array1/2/3
-         ├── matrix/         # Matrix<T> using Array2<T>
-         ├── series/         # Series<T>, AnySeries, NullBuffer
-         ├── dataframe/      # DataFrame, select, filter, groupby, join
-         └── io/             # CSV, Arrow (optional)
+┌─────────────────────────────────────────────────┐                                                   
+│                     IO                          │                                                   
+│              CSV, Arrow IPC                     │                                                   
+├─────────────────────────────────────────────────┤                                                   
+│                  DataFrame                      │                                                   
+│       select, filter, groupby, join             │                                                   
+├──────────────────────┬──────────────────────────┤                                                   
+│       Series<T>      │      LinAlg trait        │                                                   
+│   AnySeries enum     │  matmul, dot, transpose  │                                                   
+├──────────────────────┴──────────────────────────┤                                                   
+│              Typed Arrays                       │                                                   
+│  PrimitiveArray<T>  StringArray  BooleanArray   │                                                   
+│              NullBuffer (bitmap)                │                                                   
+├─────────────────────────────────────────────────┤                                                   
+│                SIMD Engine                      │                                                   
+│     SimdOps trait — f32/f64/i32/i64             │                                                   
+│         AVX2 (x86_64) / NEON (aarch64)          │                                                   
+└─────────────────────────────────────────────────┘  
 ```
 
-## Data Types
+**LinAlg trait** — matmul, dot, transpose — implemented for anything exposing `&[f32]` + shape. No standalone Matrix type.
 
-Core numeric types for ML:
-- **f32** - Default float type, SIMD-optimized, memory efficient
-- **f64** - High precision floats for gradient descent, loss computation
-- **i32** - Labels, indices, small counts
-- **i64** - Large counts, timestamps
+## ML Pipeline
 
-Optional (can defer):
-- **bool** - Boolean masks for filtering
-- **String** - Categorical features, column names
+```
+CSV → DataFrame → wrangle → .to_contiguous() → LinAlg ops → DataFrame
+```
 
-## Core Structures
+## Build Order
 
-### Arrays (array/)
-**`Array<T, D>`** - Generic N-dimensional contiguous array with row-major layout  
-*Usecase*: Feature tensors, weight matrices, batched inputs  
+| Phase | Module | Depends On |
+|-------|--------|------------|
+| 1 | NullBuffer | — |
+| 2 | PrimitiveArray\<T\> | NullBuffer, SimdOps |
+| 3 | BooleanArray, StringArray | NullBuffer |
+| 4 | Series\<T\>, AnySeries | PrimitiveArray |
+| 5 | DataFrame | Series |
+| 6 | LinAlg trait | PrimitiveArray, SimdOps |
+| 7 | IO | DataFrame |
 
-**`Array1<T>`** - 1D vector  
-*Usecase*: Single feature column, model predictions, loss values  
+## Types
 
-**`Array2<T>`** - 2D matrix  
-*Usecase*: Feature matrix (samples × features), weight matrix, batch data  
+| Type | SIMD | Use Case |
+|------|------|----------|
+| f32 | yes | Features, weights, predictions |
+| f64 | planned | Gradients, loss |
+| i32 | planned | Labels, indices |
+| i64 | planned | Counts, timestamps |
+| bool | bitwise | Masks, filters |
+| String | no | Categories, column names |
 
-**`Array3<T>`** - 3D tensor  
-*Usecase*: Image batches (batch × height × width), time series windows  
-
-**`Dimension` trait** - Shape and stride computation  
-*Usecase*: Indexing, slicing, reshaping without data copy  
-
-### Matrix (matrix/)
-**`Matrix<T>`** - 2D matrix with linear algebra operations  
-*Usecase*: Matrix multiplication, inverse, decompositions, gradient computation  
-
-### SIMD (simd/)
-**`SimdOps` trait** - Vectorized arithmetic operations  
-*Usecase*: Fast element-wise ops on arrays (AVX2: 8×f32, NEON: 4×f32)  
-
-### Series (series/)
-**`Series<T>`** - 1D labeled array with null support  
-*Usecase*: Single feature with missing values, target variable  
-
-**`NullBuffer`** - Bitmap (1 bit per element) for tracking null values  
-*Usecase*: Memory-efficient missing data representation  
-
-**`AnySeries` enum** - Type-erased series for heterogeneous collections  
-*Usecase*: DataFrame columns with different types  
-
-### DataFrame (dataframe/)
-**`DataFrame`** - Columnar 2D table with heterogeneous typed columns  
-*Usecase*: Training data with mixed types, feature engineering, data loading  
-
-### Type System (types/)
-**`DataType` enum** - Runtime type information  
-*Usecase*: Type checking, conversions, DataFrame column metadata  
-
-**`Scalar` enum** - Type-erased single value  
-*Usecase*: Scalar operations on heterogeneous data  
-
-**`LinAlError`** - Unified error type  
-*Usecase*: Shape mismatches, type errors, bounds checking
+All types support null via NullBuffer bitmap.
