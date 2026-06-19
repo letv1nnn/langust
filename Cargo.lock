@@ -3,6 +3,10 @@
 version = 4
 
 [[package]]
+name = "exmpls"
+version = "0.1.0"
+
+[[package]]
 name = "linal"
 version = "0.1.0"
 
