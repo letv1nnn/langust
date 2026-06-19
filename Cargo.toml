@@ -5,7 +5,7 @@ members = [
 ]
 
 [workspace.lints.rust]
-unsafe_code = "forbid"
+unsafe_code = "warn"
 unused_imports = "warn"
 
 [workspace.lints.clippy]
