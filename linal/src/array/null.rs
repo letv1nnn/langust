@@ -11,15 +11,20 @@ pub struct NullBuffer {
 impl NullBuffer {
     pub fn new() -> Self {
         Self {
-            bits: Vec::default(),
+            bits: Vec::new(),
             len: 0usize,
         }
     }
     pub fn with_len(len: usize) -> Self {
         Self {
-            bits: vec![0u8; len.div_ceil(len)],
+            bits: vec![0u8; len.div_ceil(8usize)],
             len,
         }
+    }
+    #[inline]
+    pub fn clear(&mut self) {
+        self.bits.clear();
+        self.len = 0usize;
     }
     #[inline]
     pub const fn len(&self) -> usize {
@@ -57,6 +62,14 @@ impl NullBuffer {
         (self.bits[byte] & (1u8 << bit)) != 0u8
     }
     #[inline]
+    pub fn get(&self, idx: usize) -> Option<bool> {
+        if idx >= self.len {
+            None
+        } else {
+            Some(self.is_null(idx))
+        }
+    }
+    #[inline]
     pub fn set_null(&mut self, idx: usize) {
         assert!(idx < self.len);
         let (byte, bit) = (idx / 8usize, idx % 8usize);
@@ -67,6 +80,19 @@ impl NullBuffer {
         assert!(idx < self.len);
         let (byte, bit) = (idx / 8usize, idx % 8usize);
         self.bits[byte] &= !(1u8 << bit);
+    }
+    #[inline]
+    pub fn iter(&self) -> NullBufferIter<'_> {
+        NullBufferIter {
+            buffer: self,
+            idx: 0,
+        }
+    }
+}
+
+impl Default for NullBuffer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -102,12 +128,67 @@ impl From<Vec<u8>> for NullBuffer {
     }
 }
 
-// impl FromIterator<bool> for NullBuffer { 
-//     fn from_iter<T: IntoIterator<Item = bool>>(iter: T) -> Self {
-//         let values: Vec<bool> = iter.into_iter().collect();
-//         values.into()
-//     }
-// }
+pub struct NullBufferIter<'a> {
+    buffer: &'a NullBuffer,
+    idx: usize,
+}
+
+impl Iterator for NullBufferIter<'_> {
+    type Item = bool;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.idx >= self.buffer.len {
+            return None;
+        }
+        let value = self.buffer.is_null(self.idx);
+        self.idx += 1;
+
+        Some(value)
+    }
+}
+
+impl FromIterator<u8> for NullBuffer {
+    fn from_iter<T: IntoIterator<Item = u8>>(iter: T) -> Self {
+        let mut buffer = NullBuffer::new();
+
+        for value in iter {
+            let idx = buffer.len;
+
+            buffer.len += 1usize;
+
+            if idx % 8usize == 0usize {
+                buffer.bits.push(0u8);
+            }
+
+            if value == 0u8 {
+                buffer.set_null(idx);
+            }
+        }
+
+        buffer
+    }
+}
+
+impl FromIterator<bool> for NullBuffer {
+    fn from_iter<T: IntoIterator<Item = bool>>(iter: T) -> Self {
+        let mut buffer = NullBuffer::default();
+
+        for value in iter {
+            let idx = buffer.len;
+
+            buffer.len += 1usize;
+
+            if idx % 8usize == 0usize {
+                buffer.bits.push(0u8);
+            }
+
+            if value {
+                buffer.set_null(idx);
+            }
+        }
+
+        buffer
+    }
+}
 
 impl Display for NullBuffer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -172,11 +253,50 @@ mod nullbuffer_array_tests {
     fn setting_values() {
         let mut nb = NullBuffer::from(vec![0u8]);
         assert!(nb.is_null(0usize));
-        
+
         nb.set_valid(0usize);
         assert!(!nb.is_null(0usize));
 
         nb.set_null(0usize);
         assert!(nb.is_null(0usize));
+    }
+
+    #[test]
+    fn iterators() {
+        // FromIterator trait for u8 and bool
+        let expected = NullBuffer::from(vec![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 0u8]);
+
+        let actual_nb_1 = vec![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 0u8]
+            .into_iter()
+            .collect::<NullBuffer>();
+        println!("{}", actual_nb_1);
+
+        let actual_nb_2 = vec![true, true, true, true, true, true, true, true, false, true]
+            .into_iter()
+            .collect::<NullBuffer>();
+        println!("{}", actual_nb_2);
+
+        assert!(expected == actual_nb_1 && expected == actual_nb_2);
+        assert_eq!(actual_nb_1, actual_nb_2);
+
+        // Iterator trait
+        let nb = NullBuffer::from(vec![
+            true, false, true, false, true, false, false, true, false, false,
+        ]);
+
+        let collected: Vec<bool> = nb.iter().collect();
+
+        for i in 0..nb.len() {
+            assert_eq!(collected[i], nb.is_null(i));
+        }
+
+        assert_eq!(
+            collected,
+            vec![
+                true, false, true, false, true, false, false, true, false, false
+            ]
+        );
+
+        assert_eq!(collected.len(), nb.len());
     }
 }
