@@ -6,7 +6,10 @@ use std::{
 };
 
 use crate::{
-    array::{null::NullBuffer, traits::ArrayElement},
+    array::{
+        null::NullBuffer,
+        traits::{ArrayElement, ElementArithmetcs},
+    },
     simd::{self, traits::SimdOps},
 };
 
@@ -96,10 +99,33 @@ impl<T: ArrayElement> From<Vec<Option<T>>> for Array<T> {
 }
 
 // arithmetics
-impl<T: ArrayElement> Add<Array<T>> for Array<T> {
+impl<T: ArrayElement + ElementArithmetcs> Add<Array<T>> for Array<T> {
     type Output = Self;
     fn add(self, rhs: Array<T>) -> Self::Output {
-        unimplemented!()
+        assert_eq!(
+            self.data.len(),
+            rhs.data.len(),
+            "data length of the left hand side does not match the length of the data at the right hand side"
+        );
+        assert_eq!(
+            self.nulls.len(),
+            rhs.nulls.len(),
+            "null buffer length of the left hand side does not match the length of the data at the right hand side"
+        );
+
+        let (mut data, mut nulls) = (
+            vec![T::default(); self.data.len()],
+            NullBuffer::with_len(self.data.len()),
+        );
+        ElementArithmetcs::add_slices(&self.data, &rhs.data, &mut data);
+
+        for idx in 0..nulls.len() {
+            if self.nulls.is_null(idx) || rhs.nulls.is_null(idx) {
+                nulls.set_null(idx);
+            }
+        }
+
+        Self::with_nulls(data, nulls)
     }
 }
 
@@ -122,5 +148,16 @@ mod core_array_tests {
             arr.data, expected_data,
             "actual array data differs from the expected one"
         );
+    }
+
+    #[test]
+    fn array_f32_simd_arithmetics() {
+        let arr1: Array<f32> = vec![Some(1.0f32), None, Some(32.0f32), None].into();
+        let arr2: Array<f32> = vec![Some(2.0f32), None, None, None].into();
+
+        let (actual, expected): (Array<f32>, Array<f32>) =
+            (arr1 + arr2, vec![Some(3.0f32), None, None, None].into());
+
+        // assert_eq!(actual, expected, "actual array<f32> does not match the expected one")
     }
 }

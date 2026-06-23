@@ -2,6 +2,7 @@
 
 use std::fmt::Display;
 
+#[repr(C)]
 #[derive(Debug, PartialEq, Eq)]
 pub struct NullBuffer {
     bits: Vec<u8>,
