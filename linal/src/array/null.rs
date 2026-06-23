@@ -155,7 +155,7 @@ impl FromIterator<u8> for NullBuffer {
 
             buffer.len += 1usize;
 
-            if idx % 8usize == 0usize {
+            if idx.is_multiple_of(8usize) {
                 buffer.bits.push(0u8);
             }
 
