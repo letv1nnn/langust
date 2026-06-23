@@ -38,3 +38,10 @@ Run all tests with output:
 ```
 cargo test --release -- --nocapture
 ```
+
+## Examples
+
+There is a single example for now, which is `simple`.
+```sh
+cargo run --example simple
+```
