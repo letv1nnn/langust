@@ -82,6 +82,19 @@ impl NullBuffer {
         let (byte, bit) = (idx / 8usize, idx % 8usize);
         self.bits[byte] &= !(1u8 << bit);
     }
+    pub fn union(&self, other: &Self) -> Self {
+        assert_eq!(self.len, other.len);
+        let bits: Vec<u8> = self
+            .bits
+            .iter()
+            .zip(other.bits.iter())
+            .map(|(a, b)| a | b)
+            .collect();
+        Self {
+            bits,
+            len: self.len,
+        }
+    }
     #[inline]
     pub fn iter(&self) -> NullBufferIter<'_> {
         NullBufferIter {

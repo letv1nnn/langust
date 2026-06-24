@@ -3,7 +3,17 @@ name = "linal"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+path = "src/lib.rs"
+
 [dependencies]
+
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "linal_benchmark"
+harness = false # disabling rust's default bench system
 
 [lints.rust]
 unsafe_code = "allow"

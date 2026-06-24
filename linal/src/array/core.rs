@@ -1,9 +1,6 @@
 #![allow(unused)]
 
-use std::{
-    any::TypeId,
-    ops::{Add, Index, IndexMut},
-};
+use std::ops::{Add, Index, IndexMut};
 
 use crate::{
     array::{
@@ -107,25 +104,29 @@ impl<T: ArrayElement + ElementArithmetcs> Add<Array<T>> for Array<T> {
             rhs.data.len(),
             "data length of the left hand side does not match the length of the data at the right hand side"
         );
-        assert_eq!(
-            self.nulls.len(),
-            rhs.nulls.len(),
-            "null buffer length of the left hand side does not match the length of the data at the right hand side"
-        );
 
-        let (mut data, mut nulls) = (
-            vec![T::default(); self.data.len()],
-            NullBuffer::with_len(self.data.len()),
-        );
+        let mut data = vec![T::default(); self.data.len()];
         ElementArithmetcs::add_slices(&self.data, &rhs.data, &mut data);
+        let nulls = self.nulls.union(&rhs.nulls);
 
-        for idx in 0..nulls.len() {
-            if self.nulls.is_null(idx) || rhs.nulls.is_null(idx) {
-                nulls.set_null(idx);
-            }
-        }
+        Self { data, nulls }
+    }
+}
 
-        Self::with_nulls(data, nulls)
+impl<T: ArrayElement + ElementArithmetcs> Add<&Array<T>> for &Array<T> {
+    type Output = Array<T>;
+    fn add(self, rhs: &Array<T>) -> Self::Output {
+        assert_eq!(
+            self.data.len(),
+            rhs.data.len(),
+            "data length of the left hand side does not match the length of the data at the right hand side"
+        );
+
+        let mut data = vec![T::default(); self.data.len()];
+        ElementArithmetcs::add_slices(&self.data, &rhs.data, &mut data);
+        let nulls = self.nulls.union(&rhs.nulls);
+
+        Array { data, nulls }
     }
 }
 
@@ -153,11 +154,12 @@ mod core_array_tests {
     #[test]
     fn array_f32_simd_arithmetics() {
         let arr1: Array<f32> = vec![Some(1.0f32), None, Some(32.0f32), None].into();
-        let arr2: Array<f32> = vec![Some(2.0f32), None, None, None].into();
+        let arr2: Array<f32> = vec![Some(2.0f32), None, None, Some(3.14f32)].into();
 
         let (actual, expected): (Array<f32>, Array<f32>) =
             (arr1 + arr2, vec![Some(3.0f32), None, None, None].into());
 
-        // assert_eq!(actual, expected, "actual array<f32> does not match the expected one")
+        assert_eq!(actual[0], expected[0]);
+        assert!(!actual.nulls.is_null(0usize));
     }
 }

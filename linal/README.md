@@ -45,3 +45,9 @@ There is a single example for now, which is `simple`.
 ```sh
 cargo run --example simple
 ```
+
+## Benchmarks
+
+```sh
+cargo bench
+```
