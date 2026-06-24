@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use crate::simd::errors::SimdResult;
 
 #[derive(Clone, Copy)]

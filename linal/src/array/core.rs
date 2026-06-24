@@ -1,13 +1,11 @@
-#![allow(unused)]
-
-use std::ops::{Add, Index, IndexMut};
+use std::ops::{Add, Index, IndexMut, Sub};
 
 use crate::{
     array::{
         null::NullBuffer,
         traits::{ArrayElement, ElementArithmetcs},
     },
-    simd::{self, traits::SimdOps},
+    simd::traits::ArithmeticOperation,
 };
 
 // primitive array to store data and their state (present or not)
@@ -43,6 +41,12 @@ impl<T: ArrayElement> Array<T> {
     }
     pub fn get_mut(&mut self, idx: usize) -> Option<&mut T> {
         (!self.nulls.is_null(idx)).then(|| &mut self.data[idx])
+    }
+}
+
+impl<T: ArrayElement> Default for Array<T> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -96,6 +100,8 @@ impl<T: ArrayElement> From<Vec<Option<T>>> for Array<T> {
 }
 
 // arithmetics
+
+// F32
 impl<T: ArrayElement + ElementArithmetcs> Add<Array<T>> for Array<T> {
     type Output = Self;
     fn add(self, rhs: Array<T>) -> Self::Output {
@@ -106,7 +112,12 @@ impl<T: ArrayElement + ElementArithmetcs> Add<Array<T>> for Array<T> {
         );
 
         let mut data = vec![T::default(); self.data.len()];
-        ElementArithmetcs::add_slices(&self.data, &rhs.data, &mut data);
+        ElementArithmetcs::slice_arith(
+            &self.data,
+            &rhs.data,
+            &mut data,
+            ArithmeticOperation::Addition,
+        );
         let nulls = self.nulls.union(&rhs.nulls);
 
         Self { data, nulls }
@@ -123,10 +134,28 @@ impl<T: ArrayElement + ElementArithmetcs> Add<&Array<T>> for &Array<T> {
         );
 
         let mut data = vec![T::default(); self.data.len()];
-        ElementArithmetcs::add_slices(&self.data, &rhs.data, &mut data);
+        ElementArithmetcs::slice_arith(
+            &self.data,
+            &rhs.data,
+            &mut data,
+            ArithmeticOperation::Addition,
+        );
         let nulls = self.nulls.union(&rhs.nulls);
 
         Array { data, nulls }
+    }
+}
+
+impl<T: ArrayElement + ElementArithmetcs> Sub<Array<T>> for Array<T> {
+    type Output = Array<T>;
+    fn sub(self, rhs: Array<T>) -> Self::Output {
+        assert_eq!(
+            self.data.len(),
+            rhs.data.len(),
+            "data length of the left hand side does not match the length of the data at the right hand side"
+        );
+
+        unimplemented!()
     }
 }
 
