@@ -9,7 +9,15 @@ fn main() {
 
     println!("Array<T>:");
     let arr: Array<f32> = vec![3.14f32, 12.34f32, 0.0f32].into();
-    println!("{:?}", arr);
-    let arr: Array<f32> = vec![Some(3.14f32), None, Some(12.23f32)].into();
-    println!("{:?}", arr);
+    println!("{}", arr);
+    let arr: Array<f32> = vec![
+        Some(3.14f32),
+        None,
+        Some(12.23f32),
+        None,
+        Some(3.8773f32),
+        Some(-55.112f32),
+    ]
+    .into();
+    println!("{}", arr);
 }

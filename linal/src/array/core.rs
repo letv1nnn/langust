@@ -1,4 +1,7 @@
-use std::ops::{Add, Index, IndexMut, Sub};
+use std::{
+    fmt::Display,
+    ops::{Add, Index, IndexMut, Sub},
+};
 
 use crate::{
     array::{
@@ -31,6 +34,11 @@ impl<T: ArrayElement> Array<T> {
         }
     }
     pub fn with_nulls(data: Vec<T>, nulls: NullBuffer) -> Self {
+        assert_eq!(
+            data.len(),
+            nulls.len(),
+            "data and null buffer length mismatch"
+        );
         Self { data, nulls }
     }
     pub fn zeros(&self) -> usize {
@@ -41,6 +49,9 @@ impl<T: ArrayElement> Array<T> {
     }
     pub fn get_mut(&mut self, idx: usize) -> Option<&mut T> {
         (!self.nulls.is_null(idx)).then(|| &mut self.data[idx])
+    }
+    pub const fn len(&self) -> usize {
+        self.data.len()
     }
 }
 
@@ -96,6 +107,44 @@ impl<T: ArrayElement> From<Vec<Option<T>>> for Array<T> {
         }
 
         Self { data, nulls }
+    }
+}
+
+impl<T: ArrayElement + Display> Display for Array<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[ ")?;
+
+        for idx in 0..self.data.len() {
+            if idx > 0 {
+                write!(f, ", ")?;
+            }
+
+            if self.nulls.is_null(idx) {
+                write!(f, "NaN")?;
+            } else {
+                write!(f, "{}", self.data[idx])?;
+            }
+        }
+
+        write!(f, " ]")
+    }
+}
+
+pub struct ArrayIter<'a, T: ArrayElement> {
+    array: &'a Array<T>,
+    index: usize,
+}
+
+impl<'a, T: ArrayElement> Iterator for ArrayIter<'a, T> {
+    type Item = Option<&'a T>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.array.len() {
+            None
+        } else {
+            let value = self.array.get(self.index);
+            self.index += 1;
+            Some(value)
+        }
     }
 }
 
@@ -155,7 +204,38 @@ impl<T: ArrayElement + ElementArithmetcs> Sub<Array<T>> for Array<T> {
             "data length of the left hand side does not match the length of the data at the right hand side"
         );
 
-        unimplemented!()
+        let mut data = vec![T::default(); self.data.len()];
+        ElementArithmetcs::slice_arith(
+            &self.data,
+            &rhs.data,
+            &mut data,
+            ArithmeticOperation::Subtraction,
+        );
+        let nulls = self.nulls.union(&rhs.nulls);
+
+        Array { data, nulls }
+    }
+}
+
+impl<T: ArrayElement + ElementArithmetcs> Sub<&Array<T>> for &Array<T> {
+    type Output = Array<T>;
+    fn sub(self, rhs: &Array<T>) -> Self::Output {
+        assert_eq!(
+            self.data.len(),
+            rhs.data.len(),
+            "data length of the left hand side does not match the length of the data at the right hand side"
+        );
+
+        let mut data = vec![T::default(); self.data.len()];
+        ElementArithmetcs::slice_arith(
+            &self.data,
+            &rhs.data,
+            &mut data,
+            ArithmeticOperation::Subtraction,
+        );
+        let nulls = self.nulls.union(&rhs.nulls);
+
+        Array { data, nulls }
     }
 }
 
