@@ -1,6 +1,6 @@
 use std::{
     fmt::Display,
-    ops::{Add, Div, Index, IndexMut, Mul, Sub},
+    ops::{Add, AddAssign, Div, Index, IndexMut, Mul, Sub},
 };
 
 use crate::array::{
@@ -15,13 +15,6 @@ pub struct Array<T: ArrayElement> {
     data: Vec<T>,
     nulls: NullBuffer,
 }
-
-impl ArrayElement for f32 {}
-impl ArrayElement for f64 {}
-impl ArrayElement for i32 {}
-impl ArrayElement for i64 {}
-impl ArrayElement for u32 {}
-impl ArrayElement for u64 {}
 
 impl<T: ArrayElement> Array<T> {
     pub fn new() -> Self {
@@ -52,6 +45,52 @@ impl<T: ArrayElement> Array<T> {
     }
     pub const fn is_empty(&self) -> bool {
         self.data.is_empty()
+    }
+    pub fn sum(&self) -> T
+    where
+        T: std::iter::Sum,
+    {
+        self.data
+            .iter()
+            .enumerate()
+            .filter_map(|(i, v)| (!self.nulls.is_null(i)).then_some(*v))
+            .sum()
+    }
+    pub fn min(&self) -> Option<T>
+    where
+        T: std::cmp::Ord,
+    {
+        self.data
+            .iter()
+            .enumerate()
+            .filter_map(|(i, v)| (!self.nulls.is_null(i)).then_some(*v))
+            .min()
+    }
+    pub fn max(&self) -> Option<T>
+    where
+        T: std::cmp::Ord,
+    {
+        self.data
+            .iter()
+            .enumerate()
+            .filter_map(|(i, v)| (!self.nulls.is_null(i)).then_some(*v))
+            .max()
+    }
+    pub fn mean(&self) -> Option<f64>
+    where
+        T: Into<f64>,
+    {
+        let valid_len = self.len() - self.nulls.count_nulls();
+        if valid_len == 0usize {
+            return None;
+        }
+        let sum: f64 = self
+            .data
+            .iter()
+            .enumerate()
+            .filter_map(|(i, v)| (!self.nulls.is_null(i)).then_some((*v).into()))
+            .sum();
+        Some(sum / valid_len as f64)
     }
 }
 
@@ -195,5 +234,24 @@ mod core_array_tests {
 
         assert_eq!(actual[0], expected[0]);
         assert!(!actual.nulls.is_null(0usize));
+    }
+
+    #[test]
+    fn sum_max_min_mean() {
+        let arr: Array<f32> = vec![Some(12.34), None, Some(56.67), None].into();
+
+        const EXPONENT: f64 = 1e-5;
+
+        assert!(f32::abs(arr.sum() - 69.01) < EXPONENT as f32);
+        assert!(f64::abs(arr.mean().unwrap() - 34.505) < EXPONENT);
+
+        let arr: Array<i32> = vec![None, Some(1), None, Some(42), Some(5), Some(-14), None].into();
+        assert_eq!(arr.max(), Some(42));
+        assert_eq!(arr.min(), Some(-14));
+    }
+
+    #[test]
+    fn iterator_capabilities() {
+        unimplemented!("test main iterator capabilities")
     }
 }
