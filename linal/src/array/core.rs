@@ -1,14 +1,11 @@
 use std::{
     fmt::Display,
-    ops::{Add, Index, IndexMut, Sub},
+    ops::{Add, Div, Index, IndexMut, Mul, Sub},
 };
 
-use crate::{
-    array::{
-        null::NullBuffer,
-        traits::{ArrayElement, ElementArithmetics},
-    },
-    simd::traits::ArithmeticOperation,
+use crate::array::{
+    null::NullBuffer,
+    traits::{ArrayElement, SliceArith},
 };
 
 // primitive array to store data and their state (present or not)
@@ -151,96 +148,21 @@ impl<'a, T: ArrayElement> Iterator for ArrayIter<'a, T> {
     }
 }
 
-// arithmetics
-
-// F32
-impl<T: ArrayElement + ElementArithmetics> Add<Array<T>> for Array<T> {
-    type Output = Self;
-    fn add(self, rhs: Array<T>) -> Self::Output {
-        assert_eq!(
-            self.data.len(),
-            rhs.data.len(),
-            "data length of the left hand side does not match the length of the data at the right hand side"
-        );
-
-        let mut data = vec![T::default(); self.data.len()];
-        ElementArithmetics::slice_arith(
-            &self.data,
-            &rhs.data,
-            &mut data,
-            ArithmeticOperation::Addition,
-        );
-        let nulls = self.nulls.union(&rhs.nulls);
-
-        Self { data, nulls }
+impl<'a, T: ArrayElement> IntoIterator for &'a Array<T> {
+    type Item = Option<&'a T>;
+    type IntoIter = ArrayIter<'a, T>;
+    fn into_iter(self) -> Self::IntoIter {
+        ArrayIter {
+            array: self,
+            index: 0,
+        }
     }
 }
 
-impl<T: ArrayElement + ElementArithmetics> Add<&Array<T>> for &Array<T> {
-    type Output = Array<T>;
-    fn add(self, rhs: &Array<T>) -> Self::Output {
-        assert_eq!(
-            self.data.len(),
-            rhs.data.len(),
-            "data length of the left hand side does not match the length of the data at the right hand side"
-        );
-
-        let mut data = vec![T::default(); self.data.len()];
-        ElementArithmetics::slice_arith(
-            &self.data,
-            &rhs.data,
-            &mut data,
-            ArithmeticOperation::Addition,
-        );
-        let nulls = self.nulls.union(&rhs.nulls);
-
-        Array { data, nulls }
-    }
-}
-
-impl<T: ArrayElement + ElementArithmetics> Sub<Array<T>> for Array<T> {
-    type Output = Array<T>;
-    fn sub(self, rhs: Array<T>) -> Self::Output {
-        assert_eq!(
-            self.data.len(),
-            rhs.data.len(),
-            "data length of the left hand side does not match the length of the data at the right hand side"
-        );
-
-        let mut data = vec![T::default(); self.data.len()];
-        ElementArithmetics::slice_arith(
-            &self.data,
-            &rhs.data,
-            &mut data,
-            ArithmeticOperation::Subtraction,
-        );
-        let nulls = self.nulls.union(&rhs.nulls);
-
-        Array { data, nulls }
-    }
-}
-
-impl<T: ArrayElement + ElementArithmetics> Sub<&Array<T>> for &Array<T> {
-    type Output = Array<T>;
-    fn sub(self, rhs: &Array<T>) -> Self::Output {
-        assert_eq!(
-            self.data.len(),
-            rhs.data.len(),
-            "data length of the left hand side does not match the length of the data at the right hand side"
-        );
-
-        let mut data = vec![T::default(); self.data.len()];
-        ElementArithmetics::slice_arith(
-            &self.data,
-            &rhs.data,
-            &mut data,
-            ArithmeticOperation::Subtraction,
-        );
-        let nulls = self.nulls.union(&rhs.nulls);
-
-        Array { data, nulls }
-    }
-}
+impl_array_op!(Add, add, add_slices);
+impl_array_op!(Sub, sub, sub_slices);
+impl_array_op!(Mul, mul, mul_slices);
+impl_array_op!(Div, div, div_slices);
 
 #[cfg(test)]
 mod core_array_tests {
