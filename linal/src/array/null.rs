@@ -206,10 +206,14 @@ impl FromIterator<bool> for NullBuffer {
 
 impl Display for NullBuffer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[ ")?;
         for i in 0..self.len {
-            writeln!(f, "{}", if self.is_null(i) { "NaN" } else { "Value" })?;
+            if i > 0 {
+                write!(f, ", ")?;
+            }
+            write!(f, "{}", if self.is_null(i) { "NaN" } else { "Value" })?;
         }
-        Ok(())
+        write!(f, " ]")
     }
 }
 

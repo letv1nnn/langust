@@ -6,7 +6,7 @@ use std::{
 use crate::{
     array::{
         null::NullBuffer,
-        traits::{ArrayElement, ElementArithmetcs},
+        traits::{ArrayElement, ElementArithmetics},
     },
     simd::traits::ArithmeticOperation,
 };
@@ -41,7 +41,7 @@ impl<T: ArrayElement> Array<T> {
         );
         Self { data, nulls }
     }
-    pub fn zeros(&self) -> usize {
+    pub fn null_count(&self) -> usize {
         self.nulls.count_nulls()
     }
     pub fn get(&self, idx: usize) -> Option<&T> {
@@ -52,6 +52,9 @@ impl<T: ArrayElement> Array<T> {
     }
     pub const fn len(&self) -> usize {
         self.data.len()
+    }
+    pub const fn is_empty(&self) -> bool {
+        self.data.is_empty()
     }
 }
 
@@ -65,7 +68,7 @@ impl<T: ArrayElement> Index<usize> for Array<T> {
     type Output = T;
     fn index(&self, index: usize) -> &Self::Output {
         if self.nulls.is_null(index) {
-            panic!("value at {index} index is abscent")
+            panic!("index {index} is null")
         } else {
             &self.data[index]
         }
@@ -75,7 +78,7 @@ impl<T: ArrayElement> Index<usize> for Array<T> {
 impl<T: ArrayElement> IndexMut<usize> for Array<T> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         if self.nulls.is_null(index) {
-            panic!("value at {index} index is abscent");
+            panic!("index {index} is null");
         } else {
             &mut self.data[index]
         }
@@ -151,7 +154,7 @@ impl<'a, T: ArrayElement> Iterator for ArrayIter<'a, T> {
 // arithmetics
 
 // F32
-impl<T: ArrayElement + ElementArithmetcs> Add<Array<T>> for Array<T> {
+impl<T: ArrayElement + ElementArithmetics> Add<Array<T>> for Array<T> {
     type Output = Self;
     fn add(self, rhs: Array<T>) -> Self::Output {
         assert_eq!(
@@ -161,7 +164,7 @@ impl<T: ArrayElement + ElementArithmetcs> Add<Array<T>> for Array<T> {
         );
 
         let mut data = vec![T::default(); self.data.len()];
-        ElementArithmetcs::slice_arith(
+        ElementArithmetics::slice_arith(
             &self.data,
             &rhs.data,
             &mut data,
@@ -173,7 +176,7 @@ impl<T: ArrayElement + ElementArithmetcs> Add<Array<T>> for Array<T> {
     }
 }
 
-impl<T: ArrayElement + ElementArithmetcs> Add<&Array<T>> for &Array<T> {
+impl<T: ArrayElement + ElementArithmetics> Add<&Array<T>> for &Array<T> {
     type Output = Array<T>;
     fn add(self, rhs: &Array<T>) -> Self::Output {
         assert_eq!(
@@ -183,7 +186,7 @@ impl<T: ArrayElement + ElementArithmetcs> Add<&Array<T>> for &Array<T> {
         );
 
         let mut data = vec![T::default(); self.data.len()];
-        ElementArithmetcs::slice_arith(
+        ElementArithmetics::slice_arith(
             &self.data,
             &rhs.data,
             &mut data,
@@ -195,7 +198,7 @@ impl<T: ArrayElement + ElementArithmetcs> Add<&Array<T>> for &Array<T> {
     }
 }
 
-impl<T: ArrayElement + ElementArithmetcs> Sub<Array<T>> for Array<T> {
+impl<T: ArrayElement + ElementArithmetics> Sub<Array<T>> for Array<T> {
     type Output = Array<T>;
     fn sub(self, rhs: Array<T>) -> Self::Output {
         assert_eq!(
@@ -205,7 +208,7 @@ impl<T: ArrayElement + ElementArithmetcs> Sub<Array<T>> for Array<T> {
         );
 
         let mut data = vec![T::default(); self.data.len()];
-        ElementArithmetcs::slice_arith(
+        ElementArithmetics::slice_arith(
             &self.data,
             &rhs.data,
             &mut data,
@@ -217,7 +220,7 @@ impl<T: ArrayElement + ElementArithmetcs> Sub<Array<T>> for Array<T> {
     }
 }
 
-impl<T: ArrayElement + ElementArithmetcs> Sub<&Array<T>> for &Array<T> {
+impl<T: ArrayElement + ElementArithmetics> Sub<&Array<T>> for &Array<T> {
     type Output = Array<T>;
     fn sub(self, rhs: &Array<T>) -> Self::Output {
         assert_eq!(
@@ -227,7 +230,7 @@ impl<T: ArrayElement + ElementArithmetcs> Sub<&Array<T>> for &Array<T> {
         );
 
         let mut data = vec![T::default(); self.data.len()];
-        ElementArithmetcs::slice_arith(
+        ElementArithmetics::slice_arith(
             &self.data,
             &rhs.data,
             &mut data,
