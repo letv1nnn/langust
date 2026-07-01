@@ -93,6 +93,7 @@ fn dispatch_x86_64(a: &[f32], b: &[f32], out: &mut [f32], op: ArithmeticOperatio
     scalar_tail(a, b, out, i, op);
 }
 
+#[allow(unused)]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
 fn dispatch_inplace_aarch64(out: &mut [f32], value: &[f32], op: ArithmeticOperation) {

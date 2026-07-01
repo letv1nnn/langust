@@ -10,5 +10,6 @@ pub(crate) enum ArithmeticOperation {
 
 pub(crate) trait SimdOps: Sized + Copy {
     fn arithmetic(a: &[Self], b: &[Self], out: &mut [Self], op: ArithmeticOperation) -> SimdResult;
+    #[allow(unused)]
     fn arithmetic_inplace(out: &mut [Self], value: &[Self], op: ArithmeticOperation) -> SimdResult;
 }
